@@ -7,6 +7,9 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
+    // BASE_URL is '/' locally and '/redboks-journey/' on GitHub Pages (see vite.config.js)
+    this.load.setBaseURL(import.meta.env.BASE_URL);
+
     const bar = this.add.graphics();
     this.load.on('progress', (value) => {
       bar.clear();
@@ -14,18 +17,18 @@ export class BootScene extends Phaser.Scene {
       bar.fillRect(280, 310, 400 * value, 20);
     });
 
-    this.load.json('manifest', '/assets/sprites/manifest.json');
+    this.load.json('manifest', 'assets/sprites/manifest.json');
 
     for (const biome of Object.values(BIOMES)) {
-      this.load.image(biome.background, `/assets/backgrounds/${biome.background}.png`);
+      this.load.image(biome.background, `assets/backgrounds/${biome.background}.png`);
       for (const entry of biome.words) {
-        this.load.image(entry.sprite, `/assets/sprites/${entry.sprite}.png`);
+        this.load.image(entry.sprite, `assets/sprites/${entry.sprite}.png`);
       }
     }
 
     for (let i = 0; i <= 10; i++) {
       const n = String(i).padStart(2, '0');
-      this.load.image(`redbok_${n}`, `/assets/sprites/redbok_${n}.png`);
+      this.load.image(`redbok_${n}`, `assets/sprites/redbok_${n}.png`);
     }
   }
 
