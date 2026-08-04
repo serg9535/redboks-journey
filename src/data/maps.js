@@ -33,6 +33,20 @@ export const MAPS = {
       { col: 14, row: 9 },
     ],
   },
+  robots: {
+    // тот же грид комнат — визуально биом задаёт фон/спрайты, не карта
+    layout: FOREST_LAYOUT,
+    playerStart: { col: 3, row: 3 },
+    // индексы соответствуют порядку BIOMES.robots.words в vocab.js
+    monsterTiles: [
+      { col: 2, row: 2 },
+      { col: 5, row: 4 },
+      { col: 15, row: 2 },
+      { col: 16, row: 4 },
+      { col: 4, row: 9 },
+      { col: 9, row: 9 },
+    ],
+  },
 };
 
 export function isWalkable(layout, col, row) {

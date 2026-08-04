@@ -9,6 +9,9 @@ const config = {
   width: 960,
   height: 640,
   pixelArt: true,
+  // default 32 is lower than our total asset count; without this the loader
+  // silently drops files beyond the first 32 (no error, no load — see BootScene)
+  loader: { maxParallelDownloads: 200 },
   physics: {
     default: 'arcade',
     arcade: { debug: false },

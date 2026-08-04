@@ -595,5 +595,49 @@
         257
       ]
     }
+  ],
+  "robots": [
+    {
+      "name": "robots_00.png",
+      "size": [
+        472,
+        460
+      ]
+    },
+    {
+      "name": "robots_01.png",
+      "size": [
+        483,
+        354
+      ]
+    },
+    {
+      "name": "robots_02.png",
+      "size": [
+        505,
+        471
+      ]
+    },
+    {
+      "name": "robots_03.png",
+      "size": [
+        510,
+        494
+      ]
+    },
+    {
+      "name": "robots_04.png",
+      "size": [
+        436,
+        512
+      ]
+    },
+    {
+      "name": "robots_05.png",
+      "size": [
+        472,
+        496
+      ]
+    }
   ]
 }

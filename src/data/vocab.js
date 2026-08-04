@@ -51,6 +51,18 @@ export const BIOMES = {
       { sprite: 'ocean_05', word: 'fish' },
     ],
   },
+  robots: {
+    label: 'Техно-планета',
+    background: 'background_robots',
+    words: [
+      { sprite: 'robots_00', word: 'robot' },
+      { sprite: 'robots_01', word: 'shield' },
+      { sprite: 'robots_02', word: 'wing' },
+      { sprite: 'robots_03', word: 'antenna' },
+      { sprite: 'robots_04', word: 'rocket' },
+      { sprite: 'robots_05', word: 'laser' },
+    ],
+  },
 };
 
 export const ALL_WORDS = Object.values(BIOMES).flatMap((b) => b.words.map((w) => w.word));

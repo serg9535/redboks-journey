@@ -19,15 +19,64 @@ Vite + Phaser 3 (не 4 — API v3 стабильнее и предсказуе�
 - `public/assets/backgrounds/` — фоновые текстуры биомов.
 - `scripts/slice_sprites.py` — нарезка сырых грид-листов (Stable Diffusion/OpenAI) на кадры.
   Сырые листы кладутся в `raw/sprites/` (в репозиторий не коммитятся, см. `.gitignore`).
+- `scripts/generate_openai.py` — генерация ассетов через OpenAI Images API (нужен `OPENAI_API_KEY`
+  в `.env`, платно). Требует незаблокированный биллинг на platform.openai.com.
+- `scripts/generate_comfyui.py` — генерация через локальный ComfyUI (`http://127.0.0.1:8188`,
+  см. ниже), по одному персонажу за раз + LoraLoader с `rbkstyle.safetensors`.
+- `scripts/prepare_lora_dataset.py` — собирает датасет для тренировки стилевой LoRA из уже
+  нарезанных спрайтов (`public/assets/sprites/` + `raw/sprites/refgrid/`), кладёт в
+  `raw/lora_dataset/10_rbkstyle/` с подписями (caption).
 
 ## Как добавить новый биом
 
-1. Сгенерировать/получить лист монстров + фон биома.
+1. Сгенерировать/получить лист монстров + фон биома (см. «Локальная генерация через ComfyUI+LoRA» ниже).
 2. `raw/sprites/<sheet>.png` → добавить в `scripts/slice_sprites.py` (словарь `sheets`) → запустить скрипт.
+   Либо, если генерировали по одному персонажу (`generate_comfyui.py`), кадры уже отдельные —
+   прогнать через ту же логику вырезания фона (см. пример в истории/`generate_comfyui.py`).
 3. Добавить запись в `MAPS` (`src/data/maps.js`) — тайловая карта + `monsterTiles`.
 4. Добавить запись в `BIOMES` (`src/data/vocab.js`) — слова в том же порядке, что `monsterTiles`.
 
 Логику сцен трогать не нужно — она полностью управляется данными.
+
+## Локальная генерация через ComfyUI + LoRA (Stable Diffusion)
+
+Base SD1.5 и обычные аниме-чекпойнты (`anything-v5`) НЕ воспроизводят стиль игры сами по себе —
+нужна LoRA, обученная на наших же спрайтах.
+
+- ComfyUI portable: `C:\Users\SS\ComfyUI_windows_portable` (NVIDIA CUDA build; на старом драйвере
+  падает с access violation — нужен драйвер ≥ 595.x). Запуск:
+  `python_embeded\python.exe -s ComfyUI\main.py --windows-standalone-build`, порт 8188.
+- Чекпойнты: `ComfyUI/models/checkpoints/anything-v5.safetensors` (+ базовый `v1-5-pruned-emaonly-fp16`).
+- Обученная стилевая LoRA: `ComfyUI/models/loras/rbkstyle.safetensors` (trigger word `rbkstyle`,
+  network_dim 32, 10 эпох на 75 изображениях — 45 существующих спрайтов + 30 из референс-листа
+  ChatGPT). Обучалась через `sd-scripts` (kohya) — переиспользует embedded-python ComfyUI (он же
+  и есть venv с рабочим torch+CUDA), доустановлены зависимости из `sd-scripts/requirements.txt`
+  (без строки `-e .` — она ломает установку; `safetensors==0.4.5` пришлось ослабить до `>=`, иначе
+  требует сборки из исходников через maturin).
+  - **Важно**: embedded python использует `._pth`-файл, который отключает автодобавление
+    директории скрипта в `sys.path` и игнорирует `PYTHONPATH`. Чтобы `sd-scripts` находил свой
+    пакет `library`, нужен `.pth`-файл в `site-packages` со строкой-путём до `sd-scripts` (уже
+    сделано, не трогать).
+  - Рекомендуемая сила LoRA (`strength_model`/`strength_clip`) — 0.7. На 0.85 подавляет содержимое
+    промпта (всё превращается в милых зверушек вне зависимости от текста); на 0.7 стиль всё ещё
+    сильный, а конкретика промпта (робот/цвет/детали) считается моделью.
+  - LoRA хорошо переносит СТИЛЬ, но слабо держит нетипичный для датасета контент (роботы) — нужны
+    явные механические детали в промпте (`made of metal, metallic plating, mechanical joints`) и
+    негативы против животных (`rabbit, bunny, animal ears, fur`), если персонаж уезжает в зверька.
+  - Фон/текстуры LoRA генерировать НЕ пытаться — весь датасет состоит из портретов персонажей,
+    модель рисует ещё одного персонажа вместо текстуры. Фоны биомов либо берутся готовыми, либо
+    рисуются программно (PIL), как `background_robots.png`.
+
+### КРИТИЧЕСКИЙ баг Phaser — maxParallelDownloads
+
+`Phaser.Game` config должен явно задавать `loader: { maxParallelDownloads: 200 }` (см. `src/main.js`).
+Дефолт — 32. Если суммарное число файлов в `BootScene.preload()` превышает 32, всё, что идёt
+после 32-го, молча остаётся в `load.list` и НИКОГДА не грузится — без ошибки, без `loaderror`,
+`totalFailed` остаётся 0. `create()` всё равно вызывается (луз-детекция «нет активных закачек»
+срабатывает раньше, чем очередь реально опустошается). Раньше это не проявлялось, пока суммарное
+число ассетов (фоны+спрайты+redbok-кадры) не перевалило за 32 при добавлении биома `robots`.
+Если при добавлении нового биома у монстров вдруг нет текстуры без единой ошибки в консоли —
+первым делом проверить этот лимит.
 
 ## Игровые решения (зафиксировано, не пересматривать без явного запроса)
 

@@ -11,6 +11,9 @@ export class BootScene extends Phaser.Scene {
     this.load.setBaseURL(import.meta.env.BASE_URL);
 
     const bar = this.add.graphics();
+    this.load.on('loaderror', (file) => {
+      console.error('LOAD ERROR', file.key, file.src);
+    });
     this.load.on('progress', (value) => {
       bar.clear();
       bar.fillStyle(0xe94d3f, 1);
