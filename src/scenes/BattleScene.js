@@ -13,6 +13,8 @@ export class BattleScene extends Phaser.Scene {
     this.biomeKey = data.biomeKey;
     this.wordEntry = data.wordEntry;
     this.defeatedSprites = data.defeatedSprites ?? [];
+    this.returnTile = data.returnTile;
+    this.visitedTiles = data.visitedTiles;
     this.monsterHP = MONSTER_HP;
     this.playerHP = PLAYER_HP;
     this.locked = false;
@@ -180,6 +182,15 @@ export class BattleScene extends Phaser.Scene {
   finishBattle(won) {
     const defeatedSprites = [...this.defeatedSprites];
     if (won) defeatedSprites.push(this.wordEntry.sprite);
-    this.scene.start('World', { biomeKey: this.biomeKey, defeatedSprites, retreat: !won });
+    this.scene.start('World', {
+      biomeKey: this.biomeKey,
+      defeatedSprites,
+      retreat: !won,
+      // On a win, resume exactly where the player stood — only a loss sends
+      // them back to the checkpoint. Exploration progress (fog) is never
+      // punished either way.
+      playerTile: won ? this.returnTile : undefined,
+      visitedTiles: this.visitedTiles,
+    });
   }
 }

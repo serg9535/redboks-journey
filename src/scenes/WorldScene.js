@@ -16,6 +16,8 @@ export class WorldScene extends Phaser.Scene {
     this.biomeKey = data.biomeKey ?? 'forest';
     this.defeatedSprites = data.defeatedSprites ?? [];
     this.retreat = data.retreat ?? false;
+    this.incomingPlayerTile = data.playerTile ?? null;
+    this.incomingVisitedTiles = data.visitedTiles ?? null;
   }
 
   create() {
@@ -64,8 +66,10 @@ export class WorldScene extends Phaser.Scene {
       this.monsterSprites.push(img);
     });
 
-    // Игрок — всегда стартует с чекпоинта карты (мягкий откат при поражении тоже сюда)
-    this.playerTile = { col: map.playerStart.col, row: map.playerStart.row };
+    // Игрок — с чекпоинта карты только если пришли впервые или после отката
+    // (проигрыш боя); после победы возвращаемся туда, где стояли.
+    const startTile = this.incomingPlayerTile ?? map.playerStart;
+    this.playerTile = { col: startTile.col, row: startTile.row };
     this.player = this.add.image(
       this.playerTile.col * TILE_SIZE + TILE_SIZE / 2,
       this.playerTile.row * TILE_SIZE + TILE_SIZE / 2,
@@ -92,6 +96,15 @@ export class WorldScene extends Phaser.Scene {
         rowArr.push(fog);
       }
       this.fogTiles.push(rowArr);
+    }
+    if (this.incomingVisitedTiles) {
+      for (const [c, r] of this.incomingVisitedTiles) {
+        const fog = this.fogTiles[r] && this.fogTiles[r][c];
+        if (fog) {
+          fog.visited = true;
+          fog.setAlpha(REMEMBERED_ALPHA);
+        }
+      }
     }
     this.revealAround(this.playerTile.col, this.playerTile.row, true);
 
@@ -125,12 +138,17 @@ export class WorldScene extends Phaser.Scene {
     if (this.retreat) {
       this.showToast('Redbok отдохнул и снова готов!');
     }
+
+    const allDefeated = biome.words.every((w) => this.defeatedSprites.includes(w.sprite));
+    if (allDefeated) {
+      this.showBiomeComplete(biome);
+    }
   }
 
-  hudStyle() {
+  hudStyle(size = 16) {
     return {
       fontFamily: 'system-ui, sans-serif',
-      fontSize: '16px',
+      fontSize: `${size}px`,
       color: '#ffffff',
     };
   }
@@ -249,11 +267,63 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
+  getVisitedTiles() {
+    const visited = [];
+    this.fogTiles.forEach((row, r) => {
+      row.forEach((fog, c) => {
+        if (fog.visited) visited.push([c, r]);
+      });
+    });
+    return visited;
+  }
+
   startBattle(monster) {
     this.scene.start('Battle', {
       biomeKey: this.biomeKey,
       wordEntry: monster.wordEntry,
       defeatedSprites: [...this.defeatedSprites],
+      returnTile: { ...this.playerTile },
+      visitedTiles: this.getVisitedTiles(),
+    });
+  }
+
+  showBiomeComplete(biome) {
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    this.add.rectangle(0, 0, w, h, 0x0a0e27, 0.88).setOrigin(0, 0).setDepth(30);
+    this.add
+      .text(w / 2, 120, `Биом «${biome.label}» пройден!\nВсе слова выучены`, {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '24px',
+        color: '#ffe37b',
+        align: 'center',
+        stroke: '#0a0e27',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setDepth(31);
+
+    const otherKeys = Object.keys(BIOMES).filter((key) => key !== this.biomeKey);
+    this.add
+      .text(w / 2, 195, 'Выбери следующий биом:', this.hudStyle(18))
+      .setOrigin(0.5)
+      .setDepth(31);
+
+    otherKeys.forEach((key, i) => {
+      const y = 240 + i * 58;
+      const btn = this.add
+        .rectangle(w / 2, y, 320, 48, 0x1b2454, 0.95)
+        .setStrokeStyle(2, 0xffffff)
+        .setDepth(31)
+        .setInteractive({ useHandCursor: true });
+      this.add.text(w / 2, y, BIOMES[key].label, this.hudStyle(20)).setOrigin(0.5).setDepth(32);
+
+      btn.on('pointerover', () => btn.setFillStyle(0x2c3a86, 0.95));
+      btn.on('pointerout', () => btn.setFillStyle(0x1b2454, 0.95));
+      btn.on('pointerdown', () => {
+        this.scene.start('World', { biomeKey: key, defeatedSprites: [...this.defeatedSprites] });
+      });
     });
   }
 

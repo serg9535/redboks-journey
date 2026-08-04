@@ -24,3 +24,12 @@ const config = {
 };
 
 window.__game = new Phaser.Game(config);
+
+// Mobile browsers (address-bar show/hide, orientation change) can settle their
+// viewport size *after* Phaser's initial FIT measurement, leaving the canvas
+// stuck at native/unscaled size. Force a re-measure whenever the viewport
+// actually changes, plus once shortly after boot as a safety net.
+const refreshScale = () => window.__game.scale.refresh();
+window.addEventListener('resize', refreshScale);
+window.addEventListener('orientationchange', () => setTimeout(refreshScale, 100));
+setTimeout(refreshScale, 100);
