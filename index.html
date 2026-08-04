@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Redbok's Journey</title>
     <style>
       html, body {
@@ -10,14 +10,24 @@
         padding: 0;
         background: #0a0e27;
         overflow: hidden;
+        width: 100%;
         height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         font-family: system-ui, sans-serif;
+        touch-action: none;
+        overscroll-behavior: none;
+        -webkit-user-select: none;
+        user-select: none;
       }
+      /* Phaser's Scale Manager (autoCenter: CENTER_BOTH) positions the canvas
+         itself via inline margins — do not also center #app with flex/grid,
+         the two centering mechanisms stack and misplace the canvas. */
       #app {
-        line-height: 0;
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+      #app canvas {
+        touch-action: none;
       }
     </style>
   </head>

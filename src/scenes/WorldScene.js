@@ -101,8 +101,9 @@ export class WorldScene extends Phaser.Scene {
     this.wordsText = this.add.text(this.scale.width - 10, 7, '', this.hudStyle()).setOrigin(1, 0).setDepth(11);
     this.updateHud(biome);
 
+    const hint = 'Стрелки/WASD или кнопки внизу слева — шаг за шагом. Врежься в монстра, чтобы напасть.';
     this.hintText = this.add
-      .text(this.scale.width / 2, this.scale.height - 12, 'Стрелки/WASD — шаг за шагом. Врежься в монстра, чтобы напасть.', {
+      .text(this.scale.width / 2, this.scale.height - 12, hint, {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '13px',
         color: '#ffffff',
@@ -114,6 +115,12 @@ export class WorldScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys('W,A,S,D');
+
+    // Always on (not gated behind touch-capability detection): device.input.touch
+    // is unreliable across mobile browsers/webviews, and the buttons are a
+    // harmless small corner overlay that also works fine with a mouse.
+    this.touchDirection = null;
+    this.createTouchControls();
 
     if (this.retreat) {
       this.showToast('Redbok отдохнул и снова готов!');
@@ -167,8 +174,15 @@ export class WorldScene extends Phaser.Scene {
     else if (Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.wasd.W)) dRow = -1;
     else if (Phaser.Input.Keyboard.JustDown(this.cursors.down) || Phaser.Input.Keyboard.JustDown(this.wasd.S)) dRow = 1;
 
-    if (dCol === 0 && dRow === 0) return;
+    if (dCol === 0 && dRow === 0) {
+      if (!this.touchDirection) return;
+      ({ dCol, dRow } = this.touchDirection);
+    }
 
+    this.attemptMove(dCol, dRow);
+  }
+
+  attemptMove(dCol, dRow) {
     const targetCol = this.playerTile.col + dCol;
     const targetRow = this.playerTile.row + dRow;
 
@@ -195,6 +209,44 @@ export class WorldScene extends Phaser.Scene {
       },
     });
     this.revealAround(targetCol, targetRow);
+  }
+
+  createTouchControls() {
+    const cx = 92;
+    const cy = this.scale.height - 150;
+    const gap = 62;
+    const size = 56;
+    const dirs = [
+      { dx: 0, dy: -gap, dCol: 0, dRow: -1, label: '▲' },
+      { dx: 0, dy: gap, dCol: 0, dRow: 1, label: '▼' },
+      { dx: -gap, dy: 0, dCol: -1, dRow: 0, label: '◀' },
+      { dx: gap, dy: 0, dCol: 1, dRow: 0, label: '▶' },
+    ];
+
+    dirs.forEach(({ dx, dy, dCol, dRow, label }) => {
+      const bx = cx + dx;
+      const by = cy + dy;
+      const btn = this.add.rectangle(bx, by, size, size, 0x1b2454, 0.55).setDepth(25);
+      btn.setStrokeStyle(2, 0xffffff, 0.5);
+      btn.setInteractive({ useHandCursor: true });
+      this.add.text(bx, by, label, { fontSize: '22px', color: '#ffffff' }).setOrigin(0.5).setDepth(26);
+
+      const press = () => {
+        this.touchDirection = { dCol, dRow };
+        btn.setFillStyle(0x3a4a9a, 0.75);
+        if (!this.isMoving) this.attemptMove(dCol, dRow);
+      };
+      const release = () => {
+        if (this.touchDirection && this.touchDirection.dCol === dCol && this.touchDirection.dRow === dRow) {
+          this.touchDirection = null;
+        }
+        btn.setFillStyle(0x1b2454, 0.55);
+      };
+
+      btn.on('pointerdown', press);
+      btn.on('pointerup', release);
+      btn.on('pointerout', release);
+    });
   }
 
   startBattle(monster) {
