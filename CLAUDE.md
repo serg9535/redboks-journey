@@ -9,12 +9,15 @@ Vite + Phaser 3 (не 4 — API v3 стабильнее и предсказуе�
 
 ## Структура
 
-- `src/data/vocab.js` — словарь по биомам: `{sprite, word}[]` на биом. Единственное место, где
-  привязывается спрайт монстра к английскому слову.
+- `src/data/vocab.js` — словарь по биомам: `{sprite, word, ru}[]` на биом. Единственное место, где
+  привязывается спрайт монстра к английскому слову (+ русский перевод для опционального тултипа).
 - `src/data/maps.js` — тайловые карты биомов (ASCII-грид `#`/`.`), старт игрока, тайлы монстров.
-  Индекс `monsterTiles[i]` соответствует `BIOMES[biome].words[i]`.
-- `src/scenes/WorldScene.js` — пошаговое перемещение по сетке, туман войны, HUD, bump-to-battle.
-- `src/scenes/BattleScene.js` — MVP боя: слово + 3 варианта, HP монстра/игрока.
+  Индекс `monsterTiles[i]` соответствует `BIOMES[biome].words[i]`. Все биомы сейчас переиспользуют
+  один и тот же грид (`FOREST_LAYOUT`) — визуальную идентичность даёт фон/спрайты, не форма карты.
+- `src/data/settings.js` — настройки игрока в localStorage (пока только показ RU-перевода).
+- `src/scenes/WorldScene.js` — пошаговое перемещение по сетке (клавиатура/D-pad/тап-путь через BFS),
+  пинч-зум камеры, туман войны, HUD, bump-to-battle, экран «биом пройден».
+- `src/scenes/BattleScene.js` — MVP боя: слово + 3 варианта, HP монстра/игрока, опциональный RU-перевод.
 - `public/assets/sprites/` — нарезанные PNG (прозрачный фон) + `manifest.json` с bbox.
 - `public/assets/backgrounds/` — фоновые текстуры биомов.
 - `scripts/slice_sprites.py` — нарезка сырых грид-листов (Stable Diffusion/OpenAI) на кадры.

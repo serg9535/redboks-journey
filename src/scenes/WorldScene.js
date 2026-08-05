@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BIOMES } from '../data/vocab.js';
 import { MAPS, TILE_SIZE, isWalkable, mapPixelSize } from '../data/maps.js';
+import { getShowTranslation, setShowTranslation } from '../data/settings.js';
 
 const MOVE_DURATION = 160;
 const VISIBLE_RADIUS = 2; // клеток вокруг игрока — полностью видно
@@ -9,6 +10,7 @@ const UNSEEN_ALPHA = 0.92;
 const MIN_ZOOM = 0.6;
 const MAX_ZOOM = 2.2;
 const TAP_MAX_DISTANCE = 14; // px сдвига пальца, чтобы всё ещё считать тапом, а не свайпом
+const WALK_FRAMES = ['redbok_00', 'redbok_01', 'redbok_02', 'redbok_03'];
 
 export class WorldScene extends Phaser.Scene {
   constructor() {
@@ -76,6 +78,18 @@ export class WorldScene extends Phaser.Scene {
       img.tile = tile;
       this.monsterSprites.push(img);
       this.worldLayer.add(img);
+
+      // Лёгкое "дыхание", чтобы монстры не выглядели совсем статично —
+      // без новых артов, просто покачивание с разной фазой/скоростью.
+      this.tweens.add({
+        targets: img,
+        y: img.y - 5,
+        duration: 650 + Math.random() * 300,
+        delay: Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
     });
 
     // Игрок — с чекпоинта карты только если пришли впервые или после отката
@@ -140,6 +154,25 @@ export class WorldScene extends Phaser.Scene {
     this.updateHud(biome);
     this.uiLayer.add([this.hudBg, this.hpText, this.wordsText]);
 
+    // Переключатель русского перевода слов (виден в бою), настройка сохраняется
+    this.translationEnabled = getShowTranslation();
+    const toggleX = this.scale.width / 2;
+    const toggleBg = this.add
+      .rectangle(toggleX, 17, 96, 24, 0x1b2454, 0.85)
+      .setStrokeStyle(1, 0xffffff, 0.5)
+      .setDepth(11)
+      .setInteractive({ useHandCursor: true });
+    this.translationToggleText = this.add.text(toggleX, 17, '', this.hudStyle(13)).setOrigin(0.5).setDepth(12);
+    this.updateTranslationToggleLabel();
+    toggleBg.on('pointerover', () => toggleBg.setFillStyle(0x2c3a86, 0.85));
+    toggleBg.on('pointerout', () => toggleBg.setFillStyle(0x1b2454, 0.85));
+    toggleBg.on('pointerdown', () => {
+      this.translationEnabled = !this.translationEnabled;
+      setShowTranslation(this.translationEnabled);
+      this.updateTranslationToggleLabel();
+    });
+    this.uiLayer.add([toggleBg, this.translationToggleText]);
+
     const hint = 'Тапни по клетке — Redbok пойдёт туда. Два пальца — зум. Кнопки/стрелки тоже работают.';
     this.hintText = this.add
       .text(this.scale.width / 2, this.scale.height - 12, hint, {
@@ -188,6 +221,10 @@ export class WorldScene extends Phaser.Scene {
     const learned = biome.words.filter((w) => this.defeatedSprites.includes(w.sprite)).length;
     this.hpText.setText(`${biome.label}`);
     this.wordsText.setText(`Выучено слов: ${learned}/${biome.words.length}`);
+  }
+
+  updateTranslationToggleLabel() {
+    this.translationToggleText.setText(this.translationEnabled ? 'RU: вкл' : 'RU: выкл');
   }
 
   revealAround(col, row, instant = false) {
@@ -261,6 +298,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.isMoving = true;
     if (dCol !== 0) this.player.setFlipX(dCol < 0);
+    this.playWalkAnimation();
 
     this.playerTile = { col: targetCol, row: targetRow };
     this.tweens.add({
@@ -270,10 +308,25 @@ export class WorldScene extends Phaser.Scene {
       duration: MOVE_DURATION,
       ease: 'Linear',
       onComplete: () => {
+        this.player.setTexture('redbok_00');
         this.isMoving = false;
       },
     });
     this.revealAround(targetCol, targetRow);
+  }
+
+  playWalkAnimation() {
+    if (this.walkTimer) this.walkTimer.remove();
+    let frame = 0;
+    this.player.setTexture(WALK_FRAMES[0]);
+    this.walkTimer = this.time.addEvent({
+      delay: MOVE_DURATION / WALK_FRAMES.length,
+      repeat: WALK_FRAMES.length - 1,
+      callback: () => {
+        frame = (frame + 1) % WALK_FRAMES.length;
+        this.player.setTexture(WALK_FRAMES[frame]);
+      },
+    });
   }
 
   // Поиск кратчайшего пути по клеткам (BFS) — используется тапом по карте.

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BIOMES, randomChoices } from '../data/vocab.js';
+import { getShowTranslation } from '../data/settings.js';
 
 const MONSTER_HP = 3;
 const PLAYER_HP = 3;
@@ -44,6 +45,18 @@ export class BattleScene extends Phaser.Scene {
         strokeThickness: 6,
       })
       .setOrigin(0.5);
+
+    if (getShowTranslation() && this.wordEntry.ru) {
+      this.add
+        .text(660, 440, this.wordEntry.ru, {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '20px',
+          color: '#ffe37b',
+          stroke: '#0a0e27',
+          strokeThickness: 3,
+        })
+        .setOrigin(0.5);
+    }
 
     this.instructionText = this.add
       .text(this.scale.width / 2, 40, 'Какое слово подходит к картинке?', this.labelStyle(22))
