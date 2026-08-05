@@ -16,6 +16,8 @@ const config = {
   // default 32 is lower than our total asset count; without this the loader
   // silently drops files beyond the first 32 (no error, no load — see BootScene)
   loader: { maxParallelDownloads: 200 },
+  // 2 simultaneous pointers so WorldScene can detect pinch-zoom gestures
+  input: { activePointers: 2 },
   physics: {
     default: 'arcade',
     arcade: { debug: false },

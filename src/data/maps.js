@@ -18,34 +18,43 @@ const FOREST_LAYOUT = [
   '####################',
 ];
 
+// Общая раскладка комнат переиспользуется всеми биомами — визуальную
+// идентичность даёт фон/спрайты биома, не форма карты (см. CLAUDE.md).
+const SIX_MONSTER_TILES = [
+  { col: 2, row: 2 },
+  { col: 5, row: 4 },
+  { col: 15, row: 2 },
+  { col: 16, row: 4 },
+  { col: 4, row: 9 },
+  { col: 9, row: 9 },
+];
+
 export const MAPS = {
   forest: {
     layout: FOREST_LAYOUT,
     playerStart: { col: 3, row: 3 },
     // индексы соответствуют порядку BIOMES.forest.words в vocab.js
-    monsterTiles: [
-      { col: 2, row: 2 },
-      { col: 5, row: 4 },
-      { col: 15, row: 2 },
-      { col: 16, row: 4 },
-      { col: 4, row: 9 },
-      { col: 9, row: 9 },
-      { col: 14, row: 9 },
-    ],
+    monsterTiles: [...SIX_MONSTER_TILES, { col: 14, row: 9 }],
   },
-  robots: {
-    // тот же грид комнат — визуально биом задаёт фон/спрайты, не карта
+  desert: {
     layout: FOREST_LAYOUT,
     playerStart: { col: 3, row: 3 },
-    // индексы соответствуют порядку BIOMES.robots.words в vocab.js
-    monsterTiles: [
-      { col: 2, row: 2 },
-      { col: 5, row: 4 },
-      { col: 15, row: 2 },
-      { col: 16, row: 4 },
-      { col: 4, row: 9 },
-      { col: 9, row: 9 },
-    ],
+    monsterTiles: SIX_MONSTER_TILES,
+  },
+  cave: {
+    layout: FOREST_LAYOUT,
+    playerStart: { col: 3, row: 3 },
+    monsterTiles: [...SIX_MONSTER_TILES, { col: 14, row: 9 }],
+  },
+  ocean: {
+    layout: FOREST_LAYOUT,
+    playerStart: { col: 3, row: 3 },
+    monsterTiles: SIX_MONSTER_TILES,
+  },
+  robots: {
+    layout: FOREST_LAYOUT,
+    playerStart: { col: 3, row: 3 },
+    monsterTiles: SIX_MONSTER_TILES,
   },
 };
 
