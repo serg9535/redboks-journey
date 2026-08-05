@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { BIOMES } from '../data/vocab.js';
-import { MAPS, TILE_SIZE, isWalkable, mapPixelSize } from '../data/maps.js';
+import { MAPS, TILE_SIZE, isWalkable, mapPixelSize, VILLAGE_INFO } from '../data/maps.js';
 import { getShowTranslation, setShowTranslation } from '../data/settings.js';
+import { NPCS } from '../data/npcs.js';
 
 const MOVE_DURATION = 160;
 const VISIBLE_RADIUS = 2; // клеток вокруг игрока — полностью видно
@@ -26,7 +27,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   create() {
-    const biome = BIOMES[this.biomeKey];
+    const isVillage = this.biomeKey === 'village';
+    const biome = isVillage ? { ...VILLAGE_INFO, words: [] } : BIOMES[this.biomeKey];
     const map = MAPS[this.biomeKey];
     this.map = map;
     this.layout = map.layout;
@@ -91,6 +93,34 @@ export class WorldScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
       });
     });
+
+    // Жители деревни — не бойцы, при встрече открывают диалог (см. attemptMove)
+    this.npcSprites = [];
+    if (map.npcTiles) {
+      map.npcTiles.forEach((tile, i) => {
+        const npcData = NPCS[i % NPCS.length];
+        const img = this.add.image(
+          tile.col * TILE_SIZE + TILE_SIZE / 2,
+          tile.row * TILE_SIZE + TILE_SIZE / 2,
+          npcData.sprite
+        );
+        img.setScale(0.17).setDepth(2);
+        img.npcData = npcData;
+        img.tile = tile;
+        this.npcSprites.push(img);
+        this.worldLayer.add(img);
+
+        this.tweens.add({
+          targets: img,
+          y: img.y - 5,
+          duration: 650 + Math.random() * 300,
+          delay: Math.random() * 500,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      });
+    }
 
     // Игрок — с чекпоинта карты только если пришли впервые или после отката
     // (проигрыш боя); после победы возвращаемся туда, где стояли.
@@ -173,7 +203,27 @@ export class WorldScene extends Phaser.Scene {
     });
     this.uiLayer.add([toggleBg, this.translationToggleText]);
 
-    const hint = 'Тапни по клетке — Redbok пойдёт туда. Два пальца — зум. Кнопки/стрелки тоже работают.';
+    // Кнопка входа в деревню / возврата из неё — доступна из любой локации
+    const villageBtnLabel = isVillage ? '🌲 Обратно' : '🏘 Деревня';
+    const villageBtnBg = this.add
+      .rectangle(this.scale.width - 62, 46, 108, 24, 0x1b2454, 0.85)
+      .setStrokeStyle(1, 0xffffff, 0.5)
+      .setDepth(11)
+      .setInteractive({ useHandCursor: true });
+    const villageBtnText = this.add.text(this.scale.width - 62, 46, villageBtnLabel, this.hudStyle(12)).setOrigin(0.5).setDepth(12);
+    villageBtnBg.on('pointerover', () => villageBtnBg.setFillStyle(0x2c3a86, 0.85));
+    villageBtnBg.on('pointerout', () => villageBtnBg.setFillStyle(0x1b2454, 0.85));
+    villageBtnBg.on('pointerdown', () => {
+      this.scene.start('World', {
+        biomeKey: isVillage ? 'forest' : 'village',
+        defeatedSprites: [...this.defeatedSprites],
+      });
+    });
+    this.uiLayer.add([villageBtnBg, villageBtnText]);
+
+    const hint = isVillage
+      ? 'Подойди к жителю и коснись его (или врежься), чтобы поговорить.'
+      : 'Тапни по клетке — Redbok пойдёт туда. Два пальца — зум. Кнопки/стрелки тоже работают.';
     this.hintText = this.add
       .text(this.scale.width / 2, this.scale.height - 12, hint, {
         fontFamily: 'system-ui, sans-serif',
@@ -203,7 +253,7 @@ export class WorldScene extends Phaser.Scene {
       this.showToast('Redbok отдохнул и снова готов!');
     }
 
-    const allDefeated = biome.words.every((w) => this.defeatedSprites.includes(w.sprite));
+    const allDefeated = biome.words.length > 0 && biome.words.every((w) => this.defeatedSprites.includes(w.sprite));
     if (allDefeated) {
       this.showBiomeComplete(biome);
     }
@@ -218,9 +268,13 @@ export class WorldScene extends Phaser.Scene {
   }
 
   updateHud(biome) {
-    const learned = biome.words.filter((w) => this.defeatedSprites.includes(w.sprite)).length;
     this.hpText.setText(`${biome.label}`);
-    this.wordsText.setText(`Выучено слов: ${learned}/${biome.words.length}`);
+    if (biome.words.length === 0) {
+      this.wordsText.setText('Поговори с жителями');
+    } else {
+      const learned = biome.words.filter((w) => this.defeatedSprites.includes(w.sprite)).length;
+      this.wordsText.setText(`Выучено слов: ${learned}/${biome.words.length}`);
+    }
   }
 
   updateTranslationToggleLabel() {
@@ -253,7 +307,7 @@ export class WorldScene extends Phaser.Scene {
   update() {
     this.updatePinchZoom();
 
-    if (this.isMoving) return;
+    if (this.isMoving || this.dialogueActive) return;
 
     let dCol = 0;
     let dRow = 0;
@@ -284,6 +338,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   attemptMove(dCol, dRow) {
+    if (this.dialogueActive) return;
+
     const targetCol = this.playerTile.col + dCol;
     const targetRow = this.playerTile.row + dRow;
 
@@ -291,6 +347,13 @@ export class WorldScene extends Phaser.Scene {
     if (monster) {
       this.pendingPath = [];
       this.startBattle(monster);
+      return;
+    }
+
+    const npc = this.npcSprites.find((n) => n.tile.col === targetCol && n.tile.row === targetRow);
+    if (npc) {
+      this.pendingPath = [];
+      this.showDialogue(npc.npcData);
       return;
     }
 
@@ -372,6 +435,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   handleTapMove(pointer) {
+    if (this.dialogueActive) return;
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     const col = Math.floor(world.x / TILE_SIZE);
     const row = Math.floor(world.y / TILE_SIZE);
@@ -527,6 +591,54 @@ export class WorldScene extends Phaser.Scene {
         this.scene.start('World', { biomeKey: key, defeatedSprites: [...this.defeatedSprites] });
       });
     });
+  }
+
+  showDialogue(npc) {
+    this.dialogueActive = true;
+    this.touchDirection = null;
+
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const boxH = 150;
+    let lineIndex = 0;
+
+    const overlay = this.add.rectangle(0, h - boxH, w, boxH, 0x0a0e27, 0.93).setOrigin(0, 0).setDepth(40);
+    overlay.setStrokeStyle(2, 0x3a2c5c, 1);
+    const nameText = this.add
+      .text(20, h - boxH + 14, npc.name, { fontFamily: 'system-ui, sans-serif', fontSize: '18px', color: '#ffe37b' })
+      .setDepth(41);
+    const lineText = this.add
+      .text(20, h - boxH + 44, '', {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '16px',
+        color: '#ffffff',
+        wordWrap: { width: w - 40 },
+      })
+      .setDepth(41);
+    const hintText = this.add
+      .text(w - 16, h - 14, 'Тапни, чтобы продолжить ▶', { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#9aa0c8' })
+      .setOrigin(1, 1)
+      .setDepth(41);
+    const closeZone = this.add.rectangle(0, h - boxH, w, boxH, 0x000000, 0.001).setOrigin(0, 0).setDepth(42).setInteractive();
+    this.uiLayer.add([overlay, nameText, lineText, hintText, closeZone]);
+
+    const showLine = () => lineText.setText(npc.lines[lineIndex]);
+    showLine();
+
+    const advance = () => {
+      lineIndex++;
+      if (lineIndex >= npc.lines.length) {
+        overlay.destroy();
+        nameText.destroy();
+        lineText.destroy();
+        hintText.destroy();
+        closeZone.destroy();
+        this.dialogueActive = false;
+      } else {
+        showLine();
+      }
+    };
+    closeZone.on('pointerdown', advance);
   }
 
   showToast(text) {

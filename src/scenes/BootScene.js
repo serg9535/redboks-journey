@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { BIOMES } from '../data/vocab.js';
+import { VILLAGE_INFO } from '../data/maps.js';
+import { NPCS } from '../data/npcs.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -32,6 +34,13 @@ export class BootScene extends Phaser.Scene {
     for (let i = 0; i <= 10; i++) {
       const n = String(i).padStart(2, '0');
       this.load.image(`redbok_${n}`, `assets/sprites/redbok_${n}.png`);
+    }
+
+    // Деревня — отдельная локация вне BIOMES (нет боевых слов), поэтому её
+    // фон и NPC-спрайты грузим здесь явно.
+    this.load.image(VILLAGE_INFO.background, `assets/backgrounds/${VILLAGE_INFO.background}.png`);
+    for (const npc of NPCS) {
+      this.load.image(npc.sprite, `assets/sprites/${npc.sprite}.png`);
     }
   }
 
