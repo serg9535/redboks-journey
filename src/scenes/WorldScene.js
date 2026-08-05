@@ -24,6 +24,12 @@ export class WorldScene extends Phaser.Scene {
     this.retreat = data.retreat ?? false;
     this.incomingPlayerTile = data.playerTile ?? null;
     this.incomingVisitedTiles = data.visitedTiles ?? null;
+    // Phaser reuses the same Scene instance across scene.start() calls — any
+    // flag not reset here would leak from whatever state the previous run
+    // left it in (e.g. a dialogue/dev-panel left open when navigating away).
+    this.dialogueActive = false;
+    this.devPanelOpen = false;
+    this.devPanelObjects = [];
   }
 
   create() {
@@ -220,6 +226,19 @@ export class WorldScene extends Phaser.Scene {
       });
     });
     this.uiLayer.add([villageBtnBg, villageBtnText]);
+
+    // Dev-режим: быстрый переход в любую локацию без зачистки текущей —
+    // для тестирования, не для игроков (devPanelOpen/devPanelObjects сброшены в init()).
+    const devBtnBg = this.add
+      .rectangle(56, 46, 88, 24, 0x1b2454, 0.85)
+      .setStrokeStyle(1, 0xffffff, 0.5)
+      .setDepth(11)
+      .setInteractive({ useHandCursor: true });
+    const devBtnText = this.add.text(56, 46, '🛠 Dev', this.hudStyle(12)).setOrigin(0.5).setDepth(12);
+    devBtnBg.on('pointerover', () => devBtnBg.setFillStyle(0x2c3a86, 0.85));
+    devBtnBg.on('pointerout', () => devBtnBg.setFillStyle(0x1b2454, 0.85));
+    devBtnBg.on('pointerdown', () => this.toggleDevPanel());
+    this.uiLayer.add([devBtnBg, devBtnText]);
 
     const hint = isVillage
       ? 'Подойди к жителю и коснись его (или врежься), чтобы поговорить.'
@@ -591,6 +610,70 @@ export class WorldScene extends Phaser.Scene {
         this.scene.start('World', { biomeKey: key, defeatedSprites: [...this.defeatedSprites] });
       });
     });
+  }
+
+  toggleDevPanel() {
+    if (this.devPanelOpen) {
+      this.closeDevPanel();
+    } else {
+      this.openDevPanel();
+    }
+  }
+
+  openDevPanel() {
+    this.devPanelOpen = true;
+    this.dialogueActive = true; // переиспользуем блокировку движения диалога
+
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const keys = [...Object.keys(BIOMES), 'village'];
+
+    const overlay = this.add.rectangle(0, 0, w, h, 0x0a0e27, 0.92).setOrigin(0, 0).setDepth(50).setInteractive();
+    const title = this.add.text(w / 2, 46, '🛠 Dev: переход в локацию', this.hudStyle(20)).setOrigin(0.5).setDepth(51);
+    this.devPanelObjects = [overlay, title];
+
+    keys.forEach((key, i) => {
+      const y = 96 + i * 50;
+      const label = key === 'village' ? VILLAGE_INFO.label : BIOMES[key].label;
+      const isCurrent = key === this.biomeKey;
+      const baseColor = isCurrent ? 0x3a4a9a : 0x1b2454;
+      const btn = this.add
+        .rectangle(w / 2, y, 280, 40, baseColor, 0.95)
+        .setStrokeStyle(2, 0xffffff)
+        .setDepth(51)
+        .setInteractive({ useHandCursor: true });
+      const text = this.add
+        .text(w / 2, y, label + (isCurrent ? ' (тут)' : ''), this.hudStyle(16))
+        .setOrigin(0.5)
+        .setDepth(52);
+      btn.on('pointerover', () => btn.setFillStyle(0x2c3a86, 0.95));
+      btn.on('pointerout', () => btn.setFillStyle(baseColor, 0.95));
+      btn.on('pointerdown', () => {
+        this.scene.start('World', { biomeKey: key, defeatedSprites: [...this.defeatedSprites] });
+      });
+      this.devPanelObjects.push(btn, text);
+    });
+
+    const closeY = 96 + keys.length * 50 + 20;
+    const closeBtn = this.add
+      .rectangle(w / 2, closeY, 140, 36, 0x5a1a1a, 0.95)
+      .setStrokeStyle(2, 0xffffff)
+      .setDepth(51)
+      .setInteractive({ useHandCursor: true });
+    const closeText = this.add.text(w / 2, closeY, 'Закрыть', this.hudStyle(16)).setOrigin(0.5).setDepth(52);
+    closeBtn.on('pointerover', () => closeBtn.setFillStyle(0x7a2a2a, 0.95));
+    closeBtn.on('pointerout', () => closeBtn.setFillStyle(0x5a1a1a, 0.95));
+    closeBtn.on('pointerdown', () => this.closeDevPanel());
+    this.devPanelObjects.push(closeBtn, closeText);
+
+    this.uiLayer.add(this.devPanelObjects);
+  }
+
+  closeDevPanel() {
+    this.devPanelObjects.forEach((o) => o.destroy());
+    this.devPanelObjects = [];
+    this.devPanelOpen = false;
+    this.dialogueActive = false;
   }
 
   showDialogue(npc) {
