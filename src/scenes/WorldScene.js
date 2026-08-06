@@ -11,6 +11,10 @@ const MIN_ZOOM = 0.6;
 const MAX_ZOOM = 2.2;
 const TAP_MAX_DISTANCE = 14; // px сдвига пальца, чтобы всё ещё считать тапом, а не свайпом
 const WALK_FRAMES = ['redbok_00', 'redbok_01', 'redbok_02', 'redbok_03'];
+// Единственный вид сзади (нет анимационного цикла, в отличие от WALK_FRAMES) —
+// используется только при движении вверх, чтобы герой не "шёл лицом к камере"
+// удаляясь от игрока (см. attemptMove/playWalkAnimation).
+const BACK_FRAMES = ['redbok_back_00'];
 
 export class WorldScene extends Phaser.Scene {
   constructor() {
@@ -29,6 +33,7 @@ export class WorldScene extends Phaser.Scene {
     this.dialogueActive = false;
     this.devPanelOpen = false;
     this.devPanelObjects = [];
+    this.facingBack = false;
   }
 
   create() {
@@ -404,6 +409,11 @@ export class WorldScene extends Phaser.Scene {
 
     this.isMoving = true;
     if (dCol !== 0) this.player.setFlipX(dCol < 0);
+    // Спрайта "в профиль" у нас нет — только анфас (WALK_FRAMES) и со спины
+    // (BACK_FRAMES, один кадр). Вверх — со спины, любое другое направление —
+    // анфас, иначе герой будет всё время смотреть в камеру, уходя от неё.
+    if (dRow < 0) this.facingBack = true;
+    else if (dRow > 0 || dCol !== 0) this.facingBack = false;
     this.playWalkAnimation();
 
     this.playerTile = { col: targetCol, row: targetRow };
@@ -414,7 +424,7 @@ export class WorldScene extends Phaser.Scene {
       duration: MOVE_DURATION,
       ease: 'Linear',
       onComplete: () => {
-        this.player.setTexture('redbok_00');
+        this.player.setTexture(this.facingBack ? BACK_FRAMES[0] : 'redbok_00');
         this.isMoving = false;
       },
     });
@@ -423,14 +433,15 @@ export class WorldScene extends Phaser.Scene {
 
   playWalkAnimation() {
     if (this.walkTimer) this.walkTimer.remove();
+    const frames = this.facingBack ? BACK_FRAMES : WALK_FRAMES;
     let frame = 0;
-    this.player.setTexture(WALK_FRAMES[0]);
+    this.player.setTexture(frames[0]);
     this.walkTimer = this.time.addEvent({
-      delay: MOVE_DURATION / WALK_FRAMES.length,
-      repeat: WALK_FRAMES.length - 1,
+      delay: MOVE_DURATION / frames.length,
+      repeat: frames.length - 1,
       callback: () => {
-        frame = (frame + 1) % WALK_FRAMES.length;
-        this.player.setTexture(WALK_FRAMES[frame]);
+        frame = (frame + 1) % frames.length;
+        this.player.setTexture(frames[frame]);
       },
     });
   }

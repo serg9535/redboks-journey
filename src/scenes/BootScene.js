@@ -35,6 +35,8 @@ export class BootScene extends Phaser.Scene {
       const n = String(i).padStart(2, '0');
       this.load.image(`redbok_${n}`, `assets/sprites/redbok_${n}.png`);
     }
+    // Единственный вид сзади (пока без анимационного цикла) — см. BACK_FRAMES в WorldScene.js
+    this.load.image('redbok_back_00', 'assets/sprites/redbok_back_00.png');
 
     // Мирные локации (деревня, поляна, ...) — вне BIOMES (нет боевых слов),
     // поэтому их фоны и NPC-спрайты грузим здесь явно.
