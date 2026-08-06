@@ -17,7 +17,9 @@ import urllib.request
 COMFY_URL = "http://127.0.0.1:8188"
 CHECKPOINT = "anything-v5.safetensors"
 LORA_NAME = "rbkstyle.safetensors"
-LORA_STRENGTH = 0.7
+LORA_STRENGTH = 0.45  # see scripts/lora_sweep.py comparison — 0.7 let extra
+# background objects (bushes/cacti) leak into scenes despite the negative
+# prompt; 0.4-0.55 kept clean flat backgrounds with equally strong style
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(SCRIPT_DIR, "..")

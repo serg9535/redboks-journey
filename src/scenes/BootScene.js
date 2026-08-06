@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { BIOMES } from '../data/vocab.js';
-import { VILLAGE_INFO } from '../data/maps.js';
-import { NPCS } from '../data/npcs.js';
+import { PEACEFUL_LOCATIONS } from '../data/maps.js';
+import { ALL_NPCS } from '../data/npcs.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -36,10 +36,12 @@ export class BootScene extends Phaser.Scene {
       this.load.image(`redbok_${n}`, `assets/sprites/redbok_${n}.png`);
     }
 
-    // Деревня — отдельная локация вне BIOMES (нет боевых слов), поэтому её
-    // фон и NPC-спрайты грузим здесь явно.
-    this.load.image(VILLAGE_INFO.background, `assets/backgrounds/${VILLAGE_INFO.background}.png`);
-    for (const npc of NPCS) {
+    // Мирные локации (деревня, поляна, ...) — вне BIOMES (нет боевых слов),
+    // поэтому их фоны и NPC-спрайты грузим здесь явно.
+    for (const info of Object.values(PEACEFUL_LOCATIONS)) {
+      this.load.image(info.background, `assets/backgrounds/${info.background}.png`);
+    }
+    for (const npc of ALL_NPCS) {
       this.load.image(npc.sprite, `assets/sprites/${npc.sprite}.png`);
     }
   }

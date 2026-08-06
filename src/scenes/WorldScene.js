@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 import { BIOMES } from '../data/vocab.js';
-import { MAPS, TILE_SIZE, isWalkable, mapPixelSize, VILLAGE_INFO } from '../data/maps.js';
+import { MAPS, TILE_SIZE, isWalkable, mapPixelSize, PEACEFUL_LOCATIONS } from '../data/maps.js';
 import { getShowTranslation, setShowTranslation } from '../data/settings.js';
-import { NPCS } from '../data/npcs.js';
 
 const MOVE_DURATION = 160;
 const VISIBLE_RADIUS = 2; // клеток вокруг игрока — полностью видно
@@ -33,8 +32,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   create() {
-    const isVillage = this.biomeKey === 'village';
-    const biome = isVillage ? { ...VILLAGE_INFO, words: [] } : BIOMES[this.biomeKey];
+    const peacefulInfo = PEACEFUL_LOCATIONS[this.biomeKey];
+    const isVillage = !!peacefulInfo; // "мирная локация" (деревня/поляна/...), имя не меняем — используется по всему файлу
+    const biome = isVillage ? { ...peacefulInfo, words: [] } : BIOMES[this.biomeKey];
     const map = MAPS[this.biomeKey];
     this.map = map;
     this.layout = map.layout;
@@ -104,7 +104,7 @@ export class WorldScene extends Phaser.Scene {
     this.npcSprites = [];
     if (map.npcTiles) {
       map.npcTiles.forEach((tile, i) => {
-        const npcData = NPCS[i % NPCS.length];
+        const npcData = map.npcs[i % map.npcs.length];
         const img = this.add.image(
           tile.col * TILE_SIZE + TILE_SIZE / 2,
           tile.row * TILE_SIZE + TILE_SIZE / 2,
@@ -125,6 +125,20 @@ export class WorldScene extends Phaser.Scene {
           repeat: -1,
           ease: 'Sine.easeInOut',
         });
+      });
+    }
+
+    // Портал в другую мирную локацию — просто заметный тайл, логика перехода
+    // в attemptMove() (срабатывает по bump, как и NPC/монстры).
+    if (map.portals) {
+      map.portals.forEach((portal) => {
+        const marker = this.add
+          .text(portal.col * TILE_SIZE + TILE_SIZE / 2, portal.row * TILE_SIZE + TILE_SIZE / 2, '🌸', {
+            fontSize: '28px',
+          })
+          .setOrigin(0.5)
+          .setDepth(2);
+        this.worldLayer.add(marker);
       });
     }
 
@@ -220,8 +234,11 @@ export class WorldScene extends Phaser.Scene {
     villageBtnBg.on('pointerover', () => villageBtnBg.setFillStyle(0x2c3a86, 0.85));
     villageBtnBg.on('pointerout', () => villageBtnBg.setFillStyle(0x1b2454, 0.85));
     villageBtnBg.on('pointerdown', () => {
+      // из деревни — в лес (дефолтный биом), из любой другой мирной локации
+      // (поляна и т.п.) — обратно в деревню, из боевого биома — в деревню
+      const backTarget = this.biomeKey === 'village' ? 'forest' : 'village';
       this.scene.start('World', {
-        biomeKey: isVillage ? 'forest' : 'village',
+        biomeKey: isVillage ? backTarget : 'village',
         defeatedSprites: [...this.defeatedSprites],
       });
     });
@@ -373,6 +390,13 @@ export class WorldScene extends Phaser.Scene {
     if (npc) {
       this.pendingPath = [];
       this.showDialogue(npc.npcData);
+      return;
+    }
+
+    const portal = this.map.portals && this.map.portals.find((p) => p.col === targetCol && p.row === targetRow);
+    if (portal) {
+      this.pendingPath = [];
+      this.scene.start('World', { biomeKey: portal.to, playerTile: portal.spawnAt });
       return;
     }
 
@@ -626,7 +650,7 @@ export class WorldScene extends Phaser.Scene {
 
     const w = this.scale.width;
     const h = this.scale.height;
-    const keys = [...Object.keys(BIOMES), 'village'];
+    const keys = [...Object.keys(BIOMES), ...Object.keys(PEACEFUL_LOCATIONS)];
 
     const overlay = this.add.rectangle(0, 0, w, h, 0x0a0e27, 0.92).setOrigin(0, 0).setDepth(50).setInteractive();
     const title = this.add.text(w / 2, 46, '🛠 Dev: переход в локацию', this.hudStyle(20)).setOrigin(0.5).setDepth(51);
@@ -634,7 +658,7 @@ export class WorldScene extends Phaser.Scene {
 
     keys.forEach((key, i) => {
       const y = 96 + i * 50;
-      const label = key === 'village' ? VILLAGE_INFO.label : BIOMES[key].label;
+      const label = PEACEFUL_LOCATIONS[key] ? PEACEFUL_LOCATIONS[key].label : BIOMES[key].label;
       const isCurrent = key === this.biomeKey;
       const baseColor = isCurrent ? 0x3a4a9a : 0x1b2454;
       const btn = this.add
