@@ -16,8 +16,10 @@ Usage:
 import os
 import re
 import json
+import time
 import base64
 import urllib.request
+import urllib.error
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(SCRIPT_DIR, "..")
@@ -60,6 +62,16 @@ def load_api_key():
     raise RuntimeError("Set GEMINI_API_KEY env var or add it to .env")
 
 
+PROXY = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
+_opener = (
+    urllib.request.build_opener(urllib.request.ProxyHandler({"https": PROXY, "http": PROXY}))
+    if PROXY
+    else urllib.request.build_opener()
+)
+
+MAX_RETRIES = 15
+
+
 def call_gemini(api_key, parts):
     payload = json.dumps({
         "contents": [{"parts": parts}],
@@ -70,8 +82,19 @@ def call_gemini(api_key, parts):
         data=payload,
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req) as resp:
-        result = json.loads(resp.read())
+    last_err = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            with _opener.open(req, timeout=60) as resp:
+                result = json.loads(resp.read())
+            break
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            last_err = e
+            print(f"  network error (attempt {attempt}/{MAX_RETRIES}): {e}", flush=True)
+            time.sleep(min(2 ** attempt, 15))
+    else:
+        raise RuntimeError(f"giving up after {MAX_RETRIES} attempts: {last_err}")
+
     for cand in result.get("candidates", []):
         for part in cand.get("content", {}).get("parts", []):
             if "inlineData" in part:

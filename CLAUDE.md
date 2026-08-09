@@ -7,6 +7,20 @@
 
 Vite + Phaser 3 (не 4 — API v3 стабильнее и предсказуемее). Чистый JS, без TypeScript, без React.
 
+## Команды
+
+Выполняются из этой директории (`game/`):
+
+- `npm run dev` — dev-сервер (`vite --host 0.0.0.0`, чтобы был доступен с телефона в той же сети).
+- `npm run build` — прод-сборка в `dist/` (использует `vite.config.js`: `base` = `/redboks-journey/`
+  при `GITHUB_PAGES=true`, иначе `/` — см. деплой ниже).
+- `npm run preview` — локальный просмотр прод-сборки.
+
+Автотестов нет. Проверка — вручную в браузере (`npm run dev`) после изменений.
+
+Деплой — автоматический через `.github/workflows/deploy-pages.yml` на push в `master`
+(GitHub Pages). Ручного деплой-шага не требуется.
+
 ## Структура
 
 - `src/data/vocab.js` — словарь по биомам: `{sprite, word, ru}[]` на биом. Единственное место, где
@@ -38,6 +52,14 @@ Vite + Phaser 3 (не 4 — API v3 стабильнее и предсказуе�
   Сырые листы кладутся в `raw/sprites/` (в репозиторий не коммитятся, см. `.gitignore`).
 - `scripts/generate_openai.py` — генерация ассетов через OpenAI Images API (нужен `OPENAI_API_KEY`
   в `.env`, платно). Требует незаблокированный биллинг на platform.openai.com.
+- `scripts/generate_asset.py` — генерация ассетов через Gemini API (`imagen-3.0-generate-002`,
+  нужен `GEMINI_API_KEY` в `.env` или переменной окружения). Использование:
+  `python scripts/generate_asset.py --prompt "<описание>" --out "public/assets/sprites/<file>.png" --ratio 1:1`.
+  **На 2026-08-09 не работает** — free tier на проекте с ключом даёт `limit: 0` для
+  `generate_content_free_tier_requests` (та же проблема, что и с OpenAI — нужен привязанный
+  биллинг-аккаунт в Google Cloud, подписка Google AI Pro на квоту API не влияет). Не вызывать
+  автоматически, пока это не решено — сначала проверить, включён ли биллинг. См. также
+  `scripts/gemini_compare.py` (сравнение стиля Gemini vs LoRA, тот же барьер).
 - `scripts/generate_comfyui.py` — генерация через локальный ComfyUI (`http://127.0.0.1:8188`,
   см. ниже), по одному персонажу за раз + LoraLoader с `rbkstyle.safetensors`.
 - `scripts/prepare_lora_dataset.py` — собирает датасет для тренировки стилевой LoRA из уже
