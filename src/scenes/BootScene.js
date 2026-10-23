@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { BIOMES } from '../data/vocab.js';
-import { PEACEFUL_LOCATIONS } from '../data/maps.js';
+import { ALL_BACKGROUNDS } from '../data/locations.js';
 import { ALL_NPCS } from '../data/npcs.js';
+import { COLORS, textStyle } from '../ui/theme.js';
+import { drawPanel } from '../ui/widgets.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -9,48 +11,35 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // BASE_URL is '/' locally and '/redboks-journey/' on GitHub Pages (see vite.config.js)
+    // BASE_URL — '/' локально и '/redboks-journey/' на GitHub Pages (см. vite.config.js)
     this.load.setBaseURL(import.meta.env.BASE_URL);
 
+    const w = this.scale.width;
+    const h = this.scale.height;
+    this.cameras.main.setBackgroundColor(COLORS.night);
+    this.add.text(w / 2, h / 2 - 50, "Redbok's Journey", textStyle(40, COLORS.sun)).setOrigin(0.5);
+    drawPanel(this.add.graphics(), w / 2 - 200, h / 2, 400, 26, { radius: 13 });
     const bar = this.add.graphics();
-    this.load.on('loaderror', (file) => {
-      console.error('LOAD ERROR', file.key, file.src);
-    });
     this.load.on('progress', (value) => {
-      bar.clear();
-      bar.fillStyle(0xe94d3f, 1);
-      bar.fillRect(280, 310, 400 * value, 20);
+      bar.clear().fillStyle(COLORS.berry, 1).fillRoundedRect(w / 2 - 196, h / 2 + 4, Math.max(18, 392 * value), 18, 9);
     });
+    this.load.on('loaderror', (file) => console.error('LOAD ERROR', file.key, file.src));
 
-    this.load.json('manifest', 'assets/sprites/manifest.json');
-
+    for (const key of new Set(ALL_BACKGROUNDS)) {
+      this.load.image(key, `assets/backgrounds/${key}.png`);
+    }
     for (const biome of Object.values(BIOMES)) {
-      this.load.image(biome.background, `assets/backgrounds/${biome.background}.png`);
-      for (const entry of biome.words) {
-        this.load.image(entry.sprite, `assets/sprites/${entry.sprite}.png`);
-      }
+      for (const entry of biome.words) this.load.image(entry.sprite, `assets/sprites/${entry.sprite}.png`);
     }
-
     for (let i = 0; i <= 10; i++) {
-      const n = String(i).padStart(2, '0');
-      this.load.image(`redbok_${n}`, `assets/sprites/redbok_${n}.png`);
+      const key = `redbok_${String(i).padStart(2, '0')}`;
+      this.load.image(key, `assets/sprites/${key}.png`);
     }
-    // Единственный вид сзади (пока без анимационного цикла) — см. BACK_FRAMES в WorldScene.js
     this.load.image('redbok_back_00', 'assets/sprites/redbok_back_00.png');
-
-    // Мирные локации (деревня, поляна, ...) — вне BIOMES (нет боевых слов),
-    // поэтому их фоны и NPC-спрайты грузим здесь явно.
-    for (const info of Object.values(PEACEFUL_LOCATIONS)) {
-      this.load.image(info.background, `assets/backgrounds/${info.background}.png`);
-    }
-    for (const npc of ALL_NPCS) {
-      this.load.image(npc.sprite, `assets/sprites/${npc.sprite}.png`);
-    }
+    for (const npc of ALL_NPCS) this.load.image(npc.sprite, `assets/sprites/${npc.sprite}.png`);
   }
 
   create() {
-    // Redbok animations built from individual sliced frames (no shared grid size, so
-    // Phaser's frame-based animation isn't used — WorldScene/BattleScene swap textures manually).
     this.scene.start('World', { biomeKey: 'forest' });
   }
 }

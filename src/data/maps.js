@@ -85,15 +85,6 @@ MAPS.meadow = {
   portals: [{ col: 1, row: 6, to: 'village', spawnAt: { col: 2, row: 8 } }],
 };
 
-// Деревня и поляна не входят в BIOMES (нет боевых слов), но WorldScene
-// ожидает {label, background, words} для любой локации — этим и закрываем
-// разрыв. PEACEFUL_LOCATIONS перечисляет все небоевые локации разом, чтобы
-// WorldScene (dev-панель, проверка "это бой или диалог") не хардкодила
-// каждую по имени.
-export const VILLAGE_INFO = { label: 'Деревня', background: 'background_village' };
-export const MEADOW_INFO = { label: 'Цветочная поляна', background: 'background_meadow' };
-export const PEACEFUL_LOCATIONS = { village: VILLAGE_INFO, meadow: MEADOW_INFO };
-
 export function isWalkable(layout, col, row) {
   const row_ = layout[row];
   if (!row_ || col < 0 || col >= row_.length) return false;

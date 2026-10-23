@@ -66,7 +66,8 @@ export const BIOMES = {
   },
 };
 
-export const ALL_WORDS = Object.values(BIOMES).flatMap((b) => b.words.map((w) => w.word));
+// Без дублей: 'rock' и 'bat' встречаются в двух биомах.
+export const ALL_WORDS = [...new Set(Object.values(BIOMES).flatMap((b) => b.words.map((w) => w.word)))];
 
 export function randomChoices(correctWord, count = 3) {
   const pool = ALL_WORDS.filter((w) => w !== correctWord);
