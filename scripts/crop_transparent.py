@@ -52,7 +52,8 @@ def flood_background_mask(arr, step_tol=28):
     return bg
 
 
-def crop_to_transparent(src_path, dst_path, pad=8, step_tol=28):
+def crop_to_transparent(src_path, dst_path, pad=8, step_tol=28, min_part=0.06):
+    """Returns the subject's share of the image (0..1) — see crop_auto."""
     im = Image.open(src_path).convert("RGB")
     arr = np.array(im)
     bg_mask = flood_background_mask(arr, step_tol=step_tol)
@@ -67,8 +68,10 @@ def crop_to_transparent(src_path, dst_path, pad=8, step_tol=28):
     if n == 0:
         raise ValueError(f"no subject found in {src_path}")
     sizes = ndimage.sum(fg_mask, labeled, range(1, n + 1))
-    biggest = int(np.argmax(sizes)) + 1
-    comp_mask = labeled == biggest
+    # Кроме самой большой части оставляем и крупные отдельные (висящие
+    # лампочки, отдельно стоящие ножки), а мелкие блёстки/крапинки — нет.
+    keep = [i + 1 for i, size in enumerate(sizes) if size >= min_part * sizes.max()]
+    comp_mask = np.isin(labeled, keep)
 
     h, w = arr.shape[:2]
     rows = np.any(comp_mask, axis=1)
@@ -81,6 +84,18 @@ def crop_to_transparent(src_path, dst_path, pad=8, step_tol=28):
     orig_arr = np.array(Image.open(src_path).convert("RGBA"))
     orig_arr[:, :, 3] = np.where(comp_mask, 255, 0).astype(np.uint8)
     Image.fromarray(orig_arr, mode="RGBA").crop((x0, y0, x1, y1)).save(dst_path)
+    return comp_mask.mean()
+
+
+def crop_auto(src_path, dst_path, tolerances=(28, 20, 14, 10, 7), min_share=0.18, max_share=0.8):
+    """Тёмный персонаж на тёмном фоне «протекает» при допуске 28 — от него
+    остаётся кусочек (морда). Пробуем допуски от строгого к мягкому и берём
+    первый, при котором персонаж занимает правдоподобную долю кадра."""
+    for tol in tolerances:
+        share = crop_to_transparent(src_path, dst_path, step_tol=tol)
+        if min_share <= share <= max_share:
+            return tol, share
+    return tol, share
 
 
 if __name__ == "__main__":

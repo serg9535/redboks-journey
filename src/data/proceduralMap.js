@@ -27,6 +27,7 @@ function roomCenter(room) {
 export function generateDungeon({
   seed,
   monsterCount,
+  chestCount = 2,
   width = 32,
   height = 20,
   minRoomSize = 4,
@@ -112,7 +113,17 @@ export function generateDungeon({
     monsterTiles.push({ col, row: center.row });
   }
 
-  return { layout, playerStart, monsterTiles };
+  // Сундуки — в дальнем углу комнат (без лишних вызовов rand(), чтобы не
+  // поменять уже знакомую игрокам форму карт). Пропускаем клетки монстров.
+  const chestTiles = [];
+  for (const room of rooms.slice(1)) {
+    if (chestTiles.length >= chestCount) break;
+    const tile = { col: room.x2, row: room.y2 };
+    if (monsterTiles.some((t) => t.col === tile.col && t.row === tile.row)) continue;
+    chestTiles.push(tile);
+  }
+
+  return { layout, playerStart, monsterTiles, chestTiles };
 }
 
 // маленький локальный хелпер без зависимости от Phaser в data-слое

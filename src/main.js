@@ -2,6 +2,24 @@ import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene.js';
 import { WorldScene } from './scenes/WorldScene.js';
 import { BattleScene } from './scenes/BattleScene.js';
+import { PresentationScene } from './scenes/PresentationScene.js';
+import { MatchingScene } from './scenes/MatchingScene.js';
+import { CollectionScene } from './scenes/CollectionScene.js';
+import { ChestScene } from './scenes/ChestScene.js';
+import { ShopScene } from './scenes/ShopScene.js';
+import { GardenScene } from './scenes/GardenScene.js';
+import { InventoryScene } from './scenes/InventoryScene.js';
+import { DictationScene } from './scenes/DictationScene.js';
+import { MemoryScene } from './scenes/MemoryScene.js';
+import { WhackScene } from './scenes/WhackScene.js';
+import { StroopScene } from './scenes/StroopScene.js';
+import { SchulteScene } from './scenes/SchulteScene.js';
+import { LogicScene } from './scenes/LogicScene.js';
+import { FruitsScene } from './scenes/FruitsScene.js';
+import { SimonSaysScene } from './scenes/SimonSaysScene.js';
+import { PhraseScene } from './scenes/PhraseScene.js';
+import { RhythmScene } from './scenes/RhythmScene.js';
+import { TalkScene } from './scenes/TalkScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -23,7 +41,9 @@ const config = {
     default: 'arcade',
     arcade: { debug: false },
   },
-  scene: [BootScene, WorldScene, BattleScene],
+  // Presentation/Matching/Collection/Chest/Shop/Garden/Inventory/мини-игры Арены — оверлеи поверх WorldScene, поэтому
+  // идут после неё в списке (сцены рисуются в порядке списка).
+  scene: [BootScene, WorldScene, BattleScene, PresentationScene, MatchingScene, CollectionScene, ChestScene, ShopScene, GardenScene, InventoryScene, DictationScene, MemoryScene, WhackScene, StroopScene, SchulteScene, LogicScene, FruitsScene, SimonSaysScene, PhraseScene, RhythmScene, TalkScene],
 };
 
 // Phaser рисует текст в canvas один раз — если веб-шрифт ещё не загружен,

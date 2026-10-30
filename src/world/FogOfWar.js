@@ -8,8 +8,10 @@ const UNSEEN_ALPHA = 0.9;
 // Мягкий туман войны (не пугающая чернота — детская аудитория): клетки рядом
 // с игроком видны полностью, посещённые — полупрозрачны, остальные скрыты.
 export class FogOfWar {
-  constructor(scene, layer, layout, visitedTiles = []) {
+  // radius — сколько клеток вокруг видно (тёмная пещера без факела — 1, с факелом — 3).
+  constructor(scene, layer, layout, visitedTiles = [], radius = VISIBLE_RADIUS) {
     this.scene = scene;
+    this.radius = radius;
     this.tiles = layout.map((rowStr, row) =>
       [...rowStr].map((_, col) => {
         const fog = scene.add
@@ -34,7 +36,7 @@ export class FogOfWar {
       rowArr.forEach((fog, c) => {
         const dist = Math.max(Math.abs(c - col), Math.abs(r - row));
         let alpha;
-        if (dist <= VISIBLE_RADIUS) {
+        if (dist <= this.radius) {
           alpha = 0;
           fog.visited = true;
         } else if (fog.visited) {

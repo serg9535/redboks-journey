@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { BIOMES } from '../data/vocab.js';
 import { ALL_BACKGROUNDS } from '../data/locations.js';
 import { ALL_NPCS } from '../data/npcs.js';
+import { ALL_GARDEN_SPRITES } from '../data/garden.js';
+import { ITEM_SPRITES } from '../data/items.js';
 import { COLORS, textStyle } from '../ui/theme.js';
 import { drawPanel } from '../ui/widgets.js';
 
@@ -36,7 +38,13 @@ export class BootScene extends Phaser.Scene {
       this.load.image(key, `assets/sprites/${key}.png`);
     }
     this.load.image('redbok_back_00', 'assets/sprites/redbok_back_00.png');
+    for (let i = 0; i < 4; i++) {
+      const key = `redbok_back_walk_${String(i).padStart(2, '0')}`;
+      this.load.image(key, `assets/sprites/${key}.png`);
+    }
     for (const npc of ALL_NPCS) this.load.image(npc.sprite, `assets/sprites/${npc.sprite}.png`);
+    for (const key of ALL_GARDEN_SPRITES) this.load.image(key, `assets/sprites/${key}.png`);
+    for (const key of ITEM_SPRITES) this.load.image(key, `assets/sprites/${key}.png`);
   }
 
   create() {

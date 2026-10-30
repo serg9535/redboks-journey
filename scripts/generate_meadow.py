@@ -15,7 +15,7 @@ import urllib.request
 
 COMFY_URL = "http://127.0.0.1:8188"
 CHECKPOINT = "anything-v5.safetensors"
-LORA_NAME = "rbkstyle.safetensors"
+LORA_NAME = "rbkstyle_v5.safetensors"  # see generate_comfyui.py
 LORA_STRENGTH = 0.45
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

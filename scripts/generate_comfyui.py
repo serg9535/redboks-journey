@@ -16,7 +16,9 @@ import urllib.request
 
 COMFY_URL = "http://127.0.0.1:8188"
 CHECKPOINT = "anything-v5.safetensors"
-LORA_NAME = "rbkstyle.safetensors"
+# v5: same style on creatures, much better objects/backgrounds than the original rbkstyle
+# (see scripts/lora_compare.py, raw/sprites/lora_compare/grid.png); generate_biome.py uses this too
+LORA_NAME = "rbkstyle_v5.safetensors"
 LORA_STRENGTH = 0.45  # see scripts/lora_sweep.py comparison — 0.7 let extra
 # background objects (bushes/cacti) leak into scenes despite the negative
 # prompt; 0.4-0.55 kept clean flat backgrounds with equally strong style

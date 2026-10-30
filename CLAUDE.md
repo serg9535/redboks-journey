@@ -56,6 +56,73 @@ Vite + Phaser 3 (не 4 — API v3 стабильнее и предсказуе�
   **само слово заранее НЕ показывается** — раскрывается (с RU-переводом, если включён, и озвучкой)
   после ответа. Кнопка 🔊 у каждого варианта — услышать его (для не читающих детей). При ошибке
   подсвечивается правильный вариант.
+- `src/data/progress.js` — долгий прогресс в localStorage, отдельно от состояния захода
+  (`defeatedSprites`): `introduced` — биомы, где было знакомство со словами; `learned` — спрайты,
+  побеждённые хотя бы раз (для Словарика). Победа в бою вызывает `markLearned`.
+- Оверлей-сцены поверх WorldScene (`WorldScene.openOverlay(key, data)` запускает сцену и ставит
+  мир на паузу; оверлей сам делает `scene.stop()` + `scene.resume('World')` — позиция/туман/
+  побеждённые не теряются). В `main.js` идут ПОСЛЕ World, иначе рисовались бы под ней:
+  - `PresentationScene` — этап Presentation: Учитель Лист показывает слова биома по карточке
+    (картинка + слово + перевод + озвучка). Автоматически при первом заходе в боевой биом, повтор —
+    кнопкой «Учить» в HUD. Дальше переходит в `MatchingScene`.
+  - `MatchingScene` — этап Practice: соедини картинку со словом, раунды по 3 пары (тап по слову
+    его озвучивает). Ошибка без штрафа.
+  - `CollectionScene` — Словарик-коллекция: ряд на биом, пойманные — цветные со словом (тап —
+    озвучка + перевод), остальные — силуэт «?». Кнопка «Словарик» в HUD любой локации.
+  - `ChestScene` — сундук на карте (`chestTiles` из `proceduralMap.js`, углы комнат, без лишних
+    `rand()` — форма карт не меняется): «услышь слово — найди картинку». Открывается один раз
+    (progress.chests), +2 ★ за верный ответ, +1 ★ за неверный.
+  - `ShopScene` — магазин шапок у Торговца Пузыря (`npc.shop: true` → после диалога). Шапки —
+    `src/ui/hats.js` (`HATS` — английские слова с ценой; `drawHat` рисует графикой, `placeHat`
+    сажает на спрайт каждый кадр, т.к. Redbok двигается/меняет кадры).
+  - `GardenScene` — грядка огорода (мирная локация `garden`, портал из деревни справа внизу):
+    пусто → выбрать одну из 3 культур (картинка + слово) → «Полить» ×2 (росток → куст →
+    урожай) → «Что выросло?» — выбрать слово из трёх (+2 ★ / +1 ★). Без таймеров и штрафов.
+    Данные — `src/data/garden.js` (`CROPS`, спрайты `garden_seedling`, `garden_<crop>_1|2`),
+    грядки — `MAPS.garden.plotTiles`, состояние — `progress.garden` / `harvested`. Новая
+    культура = запись в `CROPS` + два спрайта (генерировались через Gemini web).
+  - `InventoryScene` — Рюкзак (кнопка в HUD под «Деревня»): оружие (надеть одно) + зелья.
+  - Мини-игры Арены (мирная локация `arena`, портал из деревни справа вверху; станции —
+    `MAPS.arena.stationTiles` `{scene, icon, label}`, бамп открывает `station.scene`), рекорды —
+    `progress.records`:
+    - `DictationScene` — графический диктант UP/DOWN/LEFT/RIGHT на сетке, уровень = длина
+      пути − 1; со 3-го без стрелок, с 5-го команды звучат подряд и прячутся (по памяти).
+    - `MemoryScene` — Simon/Корси: монстры подсвечиваются и говорят слово, повтори порядок.
+    - `WhackScene` — Go/No-Go «Hit only the CAT!»: бить молотком только названного, цель
+      меняется каждые 10 выскакиваний.
+- **Сложность боя** растёт с повторами биома: `progress.clears[биом]` (число побед над Боссом)
+  → tier 1 (3 слова) / 2 (4 слова + таймер) / 3 (режим «на слух»: монстр «кричит» слово
+  биома, выбрать картинку). Серия верных ответов (`registry 'streak'`, живёт между боями) →
+  суперудар на 2 урона. Награда за бой = tier ★.
+- **Снаряжение** — `src/data/items.js`: `WEAPONS` (sword/bow/wand/shield — эффекты в бою, см.
+  комментарий там), `POTIONS` (red +1 сердечко, blue убирает неверный вариант, green
+  останавливает таймер). Покупка — вкладки в `ShopScene` (Лавка Пузыря). Иконки `item_*` —
+  `scripts/generate_items.py` (ComfyUI + v5) или Gemini web (`../assets/gemini_inbox/jobs_items.json`).
+- **Вопросы боя** (`BattleScene.makeQuestion`): word / ear / color / odd; план раундов `this.plan`
+  — обычный монстр, элитный (`data.elite`, каждый 3-й при повторе биома), Босс (`BOSS_PHASES`),
+  Башня (`data.tower`, `towerFloor()`, станция Арены). Особые Боссы — `src/data/bosses.js`
+  (спрайт + арсенал со снарядами `fx_*`, трофей — `trophy` в `WEAPONS`).
+- Ещё станции Арены: `StroopScene` (слуховой Струп), `SchulteScene` (числа), `LogicScene`
+  (лишнее/пропало), `FruitsScene` (корзина), `SimonSaysScene`, `PhraseScene` (фразы: числа,
+  big/small, предлоги, глаголы, What is it?), `RhythmScene` (категории под метроном). Каркас —
+  `src/ui/overlay.js` (`buildOverlay`, `arenaPlayed` для задания дня).
+- Деревня: `MAPS.village.doors` (KEY) + `treasureTiles`; поляна: `pickTiles` (цветы для
+  `quests` с `goal.type: 'fetch'`); пещера — `location.dark` (без TORCH туман радиуса 1);
+  повтор биома — новая карта `biomeMap(key, clears)`. `TalkScene` — диалоги с выбором (`npc.talk`).
+  Питомцы — `PETS` в `items.js`, задание дня — `data/daily.js`, мастерство — `progress.mastery`.
+- Планы на будущее — `ROADMAP.md`.
+- **Звёзды ★** (progress.stars): бой +tier, тренировка +3, сундук +2/+1, Босс +5(+2 за tier),
+  задание — по `reward`, мини-игры Арены. Тратятся на шапки, оружие, зелья.
+- **Босс биома**: когда побеждены все монстры, на клетке последнего появляется Босс
+  (`location.bossEntry` — `BIOMES[key].boss` или первый спрайт, в короне). Бой — `BattleScene` с
+  `boss: true`: Босс «призывает» 5 разных монстров биома в пузыре, у Redbok'а 4 сердечка. Победа
+  кладёт `bossKey(biome)` в `defeatedSprites` (только после неё — экран «биом пройден») и в
+  progress.bosses → в деревне появляется спасённый житель (`rescuedNpcs` в `npcs.js`,
+  клетки `MAPS.village.rescueTiles`).
+- `src/data/quests.js` — цепочки заданий NPC (`QUESTS[npcId]`): learn/boss/chest/collect/biome.
+  Над NPC «!» — новое задание, «✓» — можно сдать. Задание дописывается последней репликой диалога
+  (`talkQuest`). Новое задание = запись в массиве, логику не трогать.
+- Dev-панель (только `npm run dev` / `?dev`): кнопки «+20 ★» и «Сброс» (весь прогресс).
 - `src/ui/` — единый стиль UI: `theme.js` (палитра, шрифт Nunito, `textStyle`, `fitSprite`),
   `widgets.js` (`Button`, `drawPanel`, `drawPips`, иконка динамика — графикой, не эмодзи),
   `DialogueBox.js` (портрет NPC + реплика, английские ЗАГЛАВНЫЕ слова озвучиваются),
@@ -78,8 +145,27 @@ Vite + Phaser 3 (не 4 — API v3 стабильнее и предсказуе�
   биллинг-аккаунт в Google Cloud, подписка Google AI Pro на квоту API не влияет). Не вызывать
   автоматически, пока это не решено — сначала проверить, включён ли биллинг. См. также
   `scripts/gemini_compare.py` (сравнение стиля Gemini vs LoRA, тот же барьер).
+- **Gemini web (рабочий путь вместо API)** — `scripts/gemini_web.mjs` гоняет пакет заданий через
+  gemini.google.com (подписка Google AI Pro) в Chrome ВМ VirtualBox `Win10` (там VPN Happ, на хосте
+  Gemini недоступен). Цепочка: Chrome в ВМ запущен задачей планировщика `ChromeDebug` с
+  `--remote-debugging-port=9222` и ОТДЕЛЬНЫМ профилем `C:\ChromeDebug\UserData` (Chrome 136+ не даёт
+  отладочный порт на основном профиле; вход в Google в нём делает пользователь) → SSH-туннель
+  `ssh -i ~/.ssh/win10vm -p 2222 -N -L 9223:127.0.0.1:9222 User@127.0.0.1` → `scripts/cdp.mjs`
+  (минимальный CDP-клиент: eval/shot/nav). Образцы стиля кладутся в `../assets/gemini_inbox/refs/`
+  (общая папка VirtualBox, в ВМ — `\\VBoxSvr\gemini_inbox`) и прикрепляются к каждому промпту;
+  результаты — `../assets/gemini_inbox/out/<name>_N.png` (1024 px). Задания — JSON
+  `[{name, prompt, refs}]`, `--save-current <name>` сохраняет картинку из открытого чата.
+  Просить «plain flat solid pure magenta (#FF00FF) background» и резать `scripts/key_magenta.py`
+  (хромакей + подавление пурпурной каймы, `--sheet` режет горизонтальный лист кадров). С образцами
+  Gemini держит стиль игры заметно лучше LoRA на ПРЕДМЕТАХ (чашка/лампа/книга/стул) и делает то, что
+  LoRA не умеет вовсе: Redbok со спины (`redbok_back_00` + цикл `redbok_back_walk_00..03`).
+  Фоны — тоже: «seamless top-down ground texture … same style as attached references» с
+  `background_forest/desert` как образцами. Заменённые старые версии — в `raw/replaced/`.
+- `scripts/train_lora.ps1` — обучение стилевой LoRA (kohya sd-scripts) с параметрами исходной
+  `rbkstyle` (см. ниже); `prepare_lora_dataset.py <out_dir>` собирает датасет в новую папку.
 - `scripts/generate_comfyui.py` — генерация через локальный ComfyUI (`http://127.0.0.1:8188`,
-  см. ниже), по одному персонажу за раз + LoraLoader с `rbkstyle.safetensors`.
+  см. ниже), по одному персонажу за раз + LoraLoader с `rbkstyle_v5.safetensors` (через него же
+  работает `generate_biome.py`; `generate_meadow.py` — тоже v5).
 - `scripts/prepare_lora_dataset.py` — собирает датасет для тренировки стилевой LoRA из уже
   нарезанных спрайтов (`public/assets/sprites/` + `raw/sprites/refgrid/`), кладёт в
   `raw/lora_dataset/10_rbkstyle/` с подписями (caption).
@@ -97,6 +183,18 @@ Vite + Phaser 3 (не 4 — API v3 стабильнее и предсказуе�
   (был сгенерирован в другом стиле).
 
 ## Как добавить новый биом
+
+**Быстрый путь (так сделаны farm/colors/food/winter/home):** описать существ и фон в `BIOMES`
+в `scripts/generate_biome.py` и запустить `python scripts/generate_biome.py <biome>` (нужен
+запущенный ComfyUI) — кадры сразу ложатся в `public/assets/sprites/<biome>_NN.png`, фон — в
+`backgrounds/`. Неудачное существо: `--only N --variants 4` (лист кандидатов в
+`raw/sprites/<biome>_candidates/`) → посмотреть → `--only N --pick <seed>`. Запись существа может
+быть `(описание, доп. негатив)`, когда LoRA уводит в другое существо (утёнок → пингвин).
+Обрезка — `crop_auto` из `crop_transparent.py` (сам подбирает допуск: тёмный персонаж на тёмном
+фоне при допуске 28 «протекает» до одной морды; крупные отдельные части вроде висящих лампочек
+сохраняются). Предметы (мебель, еда вытянутой формы) LoRA даётся хуже существ — почти всегда
+нужны варианты. Для цветов — один спрайт, перекрашенный `scripts/recolor_sprite.py` (LoRA рисует
+слаймов синими). Дальше шаги 3–5 ниже.
 
 1. Сгенерировать/получить лист монстров + фон биома (см. «Локальная генерация через ComfyUI+LoRA» ниже).
 2. `raw/sprites/<sheet>.png` → добавить в `scripts/slice_sprites.py` (словарь `sheets`) → запустить скрипт.
@@ -146,7 +244,8 @@ Base SD1.5 и обычные аниме-чекпойнты (`anything-v5`) НЕ 
   падает с access violation — нужен драйвер ≥ 595.x). Запуск:
   `python_embeded\python.exe -s ComfyUI\main.py --windows-standalone-build`, порт 8188.
 - Чекпойнты: `ComfyUI/models/checkpoints/anything-v5.safetensors` (+ базовый `v1-5-pruned-emaonly-fp16`).
-- Обученная стилевая LoRA: `ComfyUI/models/loras/rbkstyle.safetensors` (trigger word `rbkstyle`,
+- **Текущая LoRA в скриптах генерации — `rbkstyle_v5.safetensors`** (с 2026-10-26, см. сравнение
+  ниже). Исходная стилевая LoRA: `ComfyUI/models/loras/rbkstyle.safetensors` (trigger word `rbkstyle`,
   network_dim 32, 10 эпох на 75 изображениях — 45 существующих спрайтов + 30 из референс-листа
   ChatGPT). Обучалась через `sd-scripts` (kohya) — переиспользует embedded-python ComfyUI (он же
   и есть venv с рабочим torch+CUDA), доустановлены зависимости из `sd-scripts/requirements.txt`
@@ -211,6 +310,16 @@ Base SD1.5 и обычные аниме-чекпойнты (`anything-v5`) НЕ 
     - Лесное существо анфас — на удивление нормально, без регресса.
     - Робот анфас — **заметно лучше**, чем раньше: явно "механический" силуэт без ручных
       ухищрений в промпте, которые раньше были обязательны.
+    **Поправка (по `ss_*`-метаданным в самих .safetensors):** исходная `rbkstyle` на деле обучалась
+    7500 шагов (10 эпох × 750, alpha 32), а v2/v3/v4 — 760–1720 шагов при alpha 16, т.е. в 4–10 раз
+    меньше. Значит, их регресс может быть просто недообучением, а не (только) «смешением концептов».
+    `rbkstyle_v5` (датасет с ассетами из Gemini, 134 изображения, 8040 шагов) обучена с
+    параметрами оригинала — см. `scripts/train_lora.ps1`. Сравнение (`scripts/lora_compare.py`,
+    сетка в `raw/sprites/lora_compare/grid.png`, сила 0.5): существа — стиль не просел;
+    ПРЕДМЕТЫ (чашка/лампа/стул) и ФОНЫ — заметно лучше оригинала (оригинал рисовал вместо стула
+    «колобка», вместо снежной земли — круглый «ковёр»); Redbok со спины — по-прежнему не
+    выходит (4 кадра из Gemini в датасете не хватило). Побочный эффект — тонкая белая
+    «наклейка» по контуру. Для предметов/фонов использовать v5; кадры со спины — только Gemini.
     **Итог: ни `rbkstyle_v2`, ни `rbkstyle_v3` не подключены нигде в проекте — используется
     оригинальная `rbkstyle.safetensors`.** Оба файла остаются на диске
     (`ComfyUI/models/loras/rbkstyle_v{2,3}.safetensors`) как эксперимент, не как кандидат на
@@ -238,8 +347,6 @@ Base SD1.5 и обычные аниме-чекпойнты (`anything-v5`) НЕ 
 - **Пошаговое движение по тайлам** (клавиша = один шаг), не свободное перемещение.
 - Стиль ассетов: чиби пиксель-арт, см. style-lock промт в `prompt.md` (родительская папка).
 - **В бою слово не показывается до ответа** (этап Production) — ребёнок узнаёт монстра сам.
-- **Известный выброс по стилю:** `npc_rabbit.png` очищен от облака скриптом, но кончики ушей
-  неровные — кандидат на перегенерацию.
 
 ## Токены / контекст
 
